@@ -38,11 +38,11 @@ class ChatUI extends React.Component {
             <div>
               {message.content}
             </div>
-                             </div>);
+          </div>);
         } else {
           chatHistoryUI.push(<div style={{ display: 'flex', justifyContent: 'flex-end' }} key={pushMessageID}>
             {message.content}
-          </div>);
+                             </div>);
         }
       }
       // chatHistoryUI
@@ -55,10 +55,13 @@ class ChatUI extends React.Component {
     }
     return (
       <div style={{ width: 600 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={this.props.backToListPage}>
+            Back
+          </button>
+        </div>
         <div style={{ height: 500, backgroundColor: '#7FDBFF' }}>
-
           {chatHistoryUI}
-
         </div>
         <div style={{ height: 100, backgroundColor: '#DDDDDD' }}>
           <input type="text" style={{ width: '80%', height: 70 }} value={chatInputText} onChange={e => handleChangeChatInput(e.target.value)} />

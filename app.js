@@ -73,6 +73,10 @@ class App extends React.Component {
     this.setState({ password: e.target.value });
   }
 
+  backToListPage = () => {
+    this.setState({ chatTo: null });
+  }
+
   clickToChat = (e) => {
     console.log('click someone to chat:', e);
     this.setState({ chatTo: e });
@@ -263,6 +267,7 @@ class App extends React.Component {
           handleChangeChatInput={this.handleChangeChatInput}
           handleChatSend={this.handleChatSend}
           currentUser={this.state.currentUser}
+          backToListPage={this.backToListPage}
         />
       }
 
