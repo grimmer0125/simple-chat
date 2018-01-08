@@ -1,24 +1,18 @@
 class ChatUI extends React.Component {
   constructor(props) {
     super(props);
-    // this.state = {
-    //   1: {
-    //     name:"self",
-    //     message:"test1"
-    //   },
-    //   2: {
-    //     name:"remote",
-    //     message:"test2"
-    //   },
-    //   3: {
-    //     name:"self",
-    //     message:"test3"
-    //   },
-    //   4: {
-    //     name:"remote",
-    //     message:"test4"
-    //   }
-    // }
+  }
+
+  componentDidUpdate() {
+    this.scrollToBottom();
+  }
+
+  scrollToBottom() {
+    this.el.scrollIntoView({ behaviour: 'smooth' });
+  }
+
+  componentDidMount() {
+    this.scrollToBottom();
   }
   render() {
     const chatHistoryUI = [];
@@ -38,7 +32,7 @@ class ChatUI extends React.Component {
             <div>
               {message.content}
             </div>
-          </div>);
+                             </div>);
         } else {
           chatHistoryUI.push(<div style={{ display: 'flex', justifyContent: 'flex-end' }} key={pushMessageID}>
             {message.content}
@@ -60,8 +54,11 @@ class ChatUI extends React.Component {
             Back
           </button>
         </div>
-        <div style={{ height: 500, backgroundColor: '#7FDBFF' }}>
+        <div style={{ height: 500, overflow: 'scroll', backgroundColor: '#7FDBFF' }}>
           {chatHistoryUI}
+          <div
+            ref={(el) => { this.el = el; }}
+          />
         </div>
         <div style={{ height: 100, backgroundColor: '#DDDDDD' }}>
           <input type="text" style={{ width: '80%', height: 70 }} value={chatInputText} onChange={e => handleChangeChatInput(e.target.value)} />
