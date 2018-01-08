@@ -15,8 +15,8 @@ class UserList extends React.Component {
         const user = users[user_uid];
 
         if (user.rid !== currentUser.rid) {
-          listUI.push(<div>
-            <button key={user.rid}>
+          listUI.push(<div key={user.rid}>
+            <button onClick={() => this.props.startChat(user.rid)}>
               {user.rid}
             </button>
                       </div>);

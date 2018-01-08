@@ -2,6 +2,8 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      currentUser: null,
+      chatTo: null,
     };
     this.setupFirebase();
   }
@@ -10,7 +12,7 @@ class App extends React.Component {
     this.setState({ currentUser: userValue });
   }
 
-  syncAuthStatus() {
+  registerAuthStatus() {
     firebase.auth().onAuthStateChanged((authUser) => {
       console.log('got auth user change in DB:', authUser);
 
@@ -59,7 +61,7 @@ class App extends React.Component {
     console.log('firebase:', firebase);
     firebase.initializeApp(config);
 
-    this.syncAuthStatus();
+    this.registerAuthStatus();
     this.syncUserList();
   }
 
@@ -71,12 +73,85 @@ class App extends React.Component {
     this.setState({ password: e.target.value });
   }
 
+  clickToChat = (e) => {
+    console.log('click someone to chat:', e);
+    this.setState({ chatTo: e });
+
+    // try to get chat history
+    const chatID = this.getChatID(e);
+    this.syncChatHistory(chatID);
+  }
+
+  getChatID(chatTo) {
+    const array = [this.state.currentUser.rid, chatTo];
+    array.sort();
+    let chatID = array.join('');
+    // chatID = chatID.replace('@', '');
+    chatID = chatID.replace(/@/g, '');
+    chatID = chatID.replace(/\./g, '');
+
+    return chatID;
+  }
+
+  syncChatHistory(chatID) {
+    // const dataPath = 'users';
+
+    const dataPath = `chats/${chatID}`;
+
+    firebase.database().ref(dataPath).on('value', (snap) => {
+      const chat = snap.val();
+      console.log('chat change in DB:', chat);
+
+      const updatePart = {};
+      updatePart[chatID] = chat;
+      this.setState(updatePart);
+    });
+  }
+
+  handleChatSend = () => {
+    // const array = [this.state.currentUser.rid, this.state.chatTo];
+    // array.sort();
+    // let chatID = array.join('');
+    // // chatID = chatID.replace('@', '');
+    // chatID = chatID.replace(/@/g, '');
+    // chatID = chatID.replace(/\./g, '');
+    const chatID = this.getChatID(this.state.chatTo);
+
+    const path = `chats/${chatID}`;
+    const newMessageRef = firebase.database().ref(path).push();
+    // const newMessageId = newMessageRef.key;
+
+    // save to Firebase
+    // 1. chats/"self + someone"
+    // 2. timestamp
+    // 3. content
+    // /chats/
+    //    "self:remote" (unique)
+    //          //histroy
+    //              //message1(timestamp1)
+    //                  // content
+    // const self = this.state.currentUser.rid;
+    // const remote = this.state.chatTo;
+
+    newMessageRef.set({
+      name: this.state.currentUser.rid,
+      content: this.state.chatInputText,
+      // owners: [firebase.auth().currentUser.uid],
+    });
+  }
+
+  handleChangeChatInput = (e) => {
+    this.setState({ chatInputText: e });
+  }
+
   signinEmailAccount = (e) => {
     const { email, password } = this.state;
     if (email && password) {
       firebase.auth().signInWithEmailAndPassword(email, password)
         .then((user) => {
           console.log('sign in ok, get the user:', user);
+
+          this.syncUserList();
         })
         .catch((error) => {
           // Handle Errors here.
@@ -132,43 +207,65 @@ class App extends React.Component {
   }
 
   render() {
-    console.log('render');
+    // console.log('render');
 
-    const loginUI = (
-      <div >
-        <div>
-          <label>
-            {'email: '}
-          </label>
-          <input style={{ width: 200 }} type="text" value={this.state.email} onChange={this.handleChangeEmail} />
-        </div>
-        <div>
-          <label>
-            {'password: '}
-          </label>
-          <input type="password" value={this.state.password} onChange={this.handleChangePassword} />
-        </div>
-        <div>
-          <button onClick={this.signupEmailAccount}>
-            Sign up
-          </button>
+    if (!this.state.currentUser) {
+      // console.log('user not in render:');
+      const loginUI = (
+        <div >
+          <div>
+            <label>
+              {'email: '}
+            </label>
+            <input style={{ width: 200 }} type="text" value={this.state.email} onChange={this.handleChangeEmail} />
+          </div>
+          <div>
+            <label>
+              {'password: '}
+            </label>
+            <input type="password" value={this.state.password} onChange={this.handleChangePassword} />
+          </div>
+          <div>
+            <button onClick={this.signupEmailAccount}>
+              Sign up
+            </button>
 
-          <button onClick={this.signinEmailAccount}>
-            Sign in
-          </button>
+            <button onClick={this.signinEmailAccount}>
+              Sign in
+            </button>
+          </div>
         </div>
-      </div>
-    );
+      );
 
-    if (this.state.currentUser) {
-      console.log('user in render:', this.state.currentUser);
-    } else {
-      console.log('user not in render:');
+      return (
+        <div className="flex-container">
+          {loginUI}
+        </div>
+      );
     }
+
+    // console.log('user in render:', this.state.currentUser);
+
+    // TODO may change to be called in ChatUI's property
+    const chatID = this.getChatID(this.state.chatTo);
+    // this.syncChatHistory(chatID);
+    // let chatContent = null;
+    // if (this.state.hasOwnProperty(chatID)) {
+    //   chatContent = this.state[chatID];
+    // }
 
     return (
       <div className="flex-container">
-        {this.state.currentUser ? <UserList users={this.state.users} currentUser={this.state.currentUser} /> : loginUI}
+        {!this.state.chatTo ? <UserList users={this.state.users} currentUser={this.state.currentUser} startChat={this.clickToChat} /> :
+        <ChatUI
+          chatHistory={this.state.hasOwnProperty(chatID) ? this.state[chatID] : null}
+          chatInputText={this.state.chatInputText}
+          handleChangeChatInput={this.handleChangeChatInput}
+          handleChatSend={this.handleChatSend}
+          currentUser={this.state.currentUser}
+        />
+      }
+
       </div>
     );
   }
