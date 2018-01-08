@@ -2,9 +2,49 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      logged_in: false,
     };
     this.setupFirebase();
+  }
+
+  updateUserStatus(userValue) {
+    this.setState({ currentUser: userValue });
+  }
+
+  syncAuthStatus() {
+    firebase.auth().onAuthStateChanged((authUser) => {
+      console.log('got auth user change in DB:', authUser);
+
+      if (authUser) {
+        const dataPath = `/users/${authUser.uid}`;
+
+        firebase.database().ref(dataPath).on('value', (snap) => {
+          const userValue = snap.val();
+
+          console.log('userdata from firebase:', userValue);
+
+          if (userValue && userValue.rid) {
+            console.log('rid for:', authUser.uid, ';rid:', userValue.rid);
+          } else {
+            console.log('no rid for:', authUser.uid);
+          }
+
+          this.updateUserStatus(userValue);
+        });
+      } else {
+        console.log('auth becomes null');
+        // TODO handle this case
+      }
+    });
+  }
+  syncUserList() {
+    const dataPath = 'users';
+
+    firebase.database().ref(dataPath).on('value', (snap) => {
+      const users = snap.val();
+      console.log('users change in DB:', users);
+
+      this.setState({ users });
+    });
   }
 
   setupFirebase() {
@@ -19,36 +59,8 @@ class App extends React.Component {
     console.log('firebase:', firebase);
     firebase.initializeApp(config);
 
-    // after auto login or manually login
-    // manually login's callback already includes user data
-    // so only "auto login" has to use this way to handle user data
-    firebase.auth().onAuthStateChanged((authUser) => {
-      console.log('got auth user change in DB:', authUser);
-
-      if (authUser) {
-        const dataPath = `/users/${authUser.uid}`;// +"/KID";
-
-        // will not trigger two times !!! if on(xx) two times
-        firebase.database().ref(dataPath).on('value', (snap) => {
-          const userValue = snap.val();
-
-          console.log('userdata from firebase:', userValue);
-
-          if (userValue && userValue.KID) {
-            console.log('KID for:', authUser.uid, ';KID:', userValue.KID);
-          } else {
-            console.log('no KID for:', authUser.uid);
-          }
-
-          // dispatch(fetchUserData(true, userValue));
-        });
-      } else {
-        console.log('auth becomes null');
-
-
-        // dispatch(fetchUserData(false, null));
-      }
-    });
+    this.syncAuthStatus();
+    this.syncUserList();
   }
 
   handleChangeEmail = (e) => {
@@ -65,14 +77,13 @@ class App extends React.Component {
       firebase.auth().signInWithEmailAndPassword(email, password)
         .then((user) => {
           console.log('sign in ok, get the user:', user);
-
-          this.setState({ logged_in: true });
         })
         .catch((error) => {
           // Handle Errors here.
+          console.log('sign in fail');
           const errorCode = error.code;
           const errorMessage = error.message;
-          // ...
+          alert(errorMessage);
         });
     } else {
       alert('empty email/pwd');
@@ -80,19 +91,24 @@ class App extends React.Component {
   }
 
   signupEmailAccount = (e) => {
-    // e.preventDefault(); -> for form
-
     const { email, password } = this.state;
     if (email && password) {
       firebase.auth().createUserWithEmailAndPassword(email, password)
         .then((user) => {
           console.log('signup & auto login get the user:', user);
-
-          this.setState({ logged_in: true });
           // e.g.
           // displayName:null
           // email:"grimmer0125@gmail.com"
           // emailVerified:false
+
+          const dataPath = `/users/${user.uid}`;// `/users/${firebase.auth().currentUser.uid}`;
+          firebase.database().ref(dataPath).update({
+            rid: user.email,
+          }).then(() => {
+            console.log('register rid ok !!!:', user.email);
+          });
+
+          this.syncUserList();
 
           // TODO send Email Verification
           // https://firebase.google.com/docs/auth/web/manage-users
@@ -105,85 +121,54 @@ class App extends React.Component {
         .catch((error) => {
         // Handle Errors here.
           const errorCode = error.code;
-          // Pi {code: "auth/weak-password", message: "Password should be at least 6 characters"}
-
+          // e.g. {code: "auth/weak-password", message: "Password should be at least 6 characters"}
 
           const errorMessage = error.message;
           alert(errorMessage);
-        // ...
         });
     } else {
       alert('empty email/pwd');
     }
   }
 
-  // signupEmailAccount(e) {
-  //   e.preventDefault();
-  //   // if (!this.state.text.length) {
-  //   //   return;
-  //   // }
-  //   // const newItem = {
-  //   //   text: this.state.text,
-  //   //   id: Date.now(),
-  //   // };
-  //   // this.setState(prevState => ({
-  //   //   items: prevState.items.concat(newItem),
-  //   //   text: '',
-  //   // }));
-  // }
-
   render() {
     console.log('render');
-    //  {/*<div id="tester1" style={{width:"90%", height:"250px"}}>*/}
+
+    const loginUI = (
+      <div >
+        <div>
+          <label>
+            {'email: '}
+          </label>
+          <input style={{ width: 200 }} type="text" value={this.state.email} onChange={this.handleChangeEmail} />
+        </div>
+        <div>
+          <label>
+            {'password: '}
+          </label>
+          <input type="password" value={this.state.password} onChange={this.handleChangePassword} />
+        </div>
+        <div>
+          <button onClick={this.signupEmailAccount}>
+            Sign up
+          </button>
+
+          <button onClick={this.signinEmailAccount}>
+            Sign in
+          </button>
+        </div>
+      </div>
+    );
+
+    if (this.state.currentUser) {
+      console.log('user in render:', this.state.currentUser);
+    } else {
+      console.log('user not in render:');
+    }
+
     return (
       <div className="flex-container">
-        <div >
-          <div>
-            <label>
-                email:
-            </label>
-            <input type="text" value={this.state.email} onChange={this.handleChangeEmail} />
-          </div>
-          <div>
-            <label>
-                password:
-            </label>
-            <input type="password" value={this.state.password} onChange={this.handleChangePassword} />
-          </div>
-          <div>
-            <button onClick={this.signupEmailAccount}>
-              Sign up
-            </button>
-
-            <button onClick={this.signinEmailAccount}>
-              Sign in
-            </button>
-          </div>
-        </div>
-
-
-        {/* <input
-            onChange={this.handleChangeemail}
-            value={this.state.email}
-          />
-          <input
-            onChange={this.handleChangePassword}
-            value={this.state.password}
-          />
-          <button>
-            Sign up
-          </button> */}
-        {/* </form> */}
-        {/* <span>
-          accountID:
-        </span>
-        <span>
-            input here
-        </span> */}
-
-
-        {/* hello App.js
-        <UserList /> */}
+        {this.state.currentUser ? <UserList users={this.state.users} currentUser={this.state.currentUser} /> : loginUI}
       </div>
     );
   }
