@@ -8,6 +8,13 @@ class App extends React.Component {
     this.setupFirebase();
   }
 
+  resetState() {
+    this.setState({
+      currentUser: null,
+      chatTo: null,
+    });
+  }
+
   updateUserStatus(userValue) {
     this.setState({ currentUser: userValue });
   }
@@ -37,6 +44,16 @@ class App extends React.Component {
         // TODO handle this case
       }
     });
+  }
+
+  signout = (e) => {
+    console.log('sign out');
+    firebase.auth().signOut()
+      .then(() => {
+        console.log('firebase logout');
+        // dispatch(LogoutAction());
+        this.resetState();
+      });
   }
   syncUserList() {
     const dataPath = 'users';
@@ -260,7 +277,12 @@ class App extends React.Component {
 
     return (
       <div className="flex-container">
-        {!this.state.chatTo ? <UserList users={this.state.users} currentUser={this.state.currentUser} startChat={this.clickToChat} /> :
+        {!this.state.chatTo ? <UserList
+          users={this.state.users}
+          currentUser={this.state.currentUser}
+          startChat={this.clickToChat}
+          signout={this.signout}
+        /> :
         <ChatUI
           chatHistory={this.state.hasOwnProperty(chatID) ? this.state[chatID] : null}
           chatInputText={this.state.chatInputText}

@@ -25,6 +25,11 @@ class UserList extends React.Component {
     }
     return (
       <div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={this.props.signout}>
+            Log out
+          </button>
+        </div>
         public user list, click to chat
         {listUI}
       </div>
